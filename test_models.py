@@ -1,12 +1,109 @@
+import sys
+print(sys.path)
+
+# For object detection
 import datetime
 import numpy as np
-import json
 import os
-import tensorflow as tf
-from PIL import Image
-import torchvision
-import pandas as pd
 
+from PIL import Image
+# ~ import pandas as pd
+from tflite_support.task import core
+from tflite_support.task import processor
+from tflite_support.task import vision
+import cv2
+import numpy as np
+
+# For sepcies detection
+import json
+import tensorflow as tf
+import pandas as pd
+# ~ from tensorflow.keras.preprocessing.image import load_img, img_to_array
+
+model = './gbif_model_metadata.tflite'
+enable_edgetpu = False
+num_threads = 1
+
+
+base_options = core.BaseOptions(file_name=model, use_coral=enable_edgetpu, num_threads=num_threads)
+detection_options = processor.DetectionOptions(max_results=20, score_threshold=0.1)
+options = vision.ObjectDetectorOptions(base_options=base_options, detection_options=detection_options)
+detector = vision.ObjectDetector.create_from_options(options)
+
+def get_detections(detection_result):
+    detections_list = []
+
+    for counter, detection in enumerate(detection_result.detections, start=1):
+        bounding_box = detection.bounding_box
+        origin_x, origin_y, width, height = (
+            bounding_box.origin_x, bounding_box.origin_y,
+            bounding_box.width, bounding_box.height,
+        )
+
+        category_info = detection.categories[0]  # Assuming one category per detection
+        category_dict = {
+            'index': category_info.index,
+            'score': category_info.score,
+            'display_name': category_info.display_name,
+            'category_name': category_info.category_name,
+        }
+
+        detection_dict = {
+            'counter': counter,
+            'bounding_box': {
+                'origin_x': origin_x, 'origin_y': origin_y,
+                'width': width, 'height': height,
+            },
+            'categories': [category_dict],
+        }
+
+        detections_list.append(detection_dict)
+        
+        return(detections_list)
+
+
+
+# list images in path
+image_dir = './common_species/'
+images = os.listdir(image_dir)
+output_directory = './cropped_common_species/'
+
+for image_path in images:
+    print(image_dir + image_path)
+    image = cv2.imread(image_dir + image_path)
+    image = np.array(image, dtype=np.uint8)
+
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    #image = Image.open(image_dir + image_path)
+
+    # Create a TensorImage object from the RGB image.
+    input_tensor = vision.TensorImage.create_from_array(image)
+    
+    # Get the inferences 
+    detection_result = detector.detect(input_tensor)    
+    detections_list = get_detections(detection_result)
+    
+    counter = 1
+    
+    # Draw bounding boxes on the image
+    for detection in detections_list:
+        bounding_box = detection['bounding_box']
+        origin_x, origin_y, width, height = (
+                bounding_box['origin_x'],
+                bounding_box['origin_y'],
+                bounding_box['width'],
+                bounding_box['height'],
+            )
+
+        # Crop the original image
+        cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
+
+        # Save the cropped image
+        category_name = detection['categories'][0]['category_name']
+        basepath = os.path.basename(image_path)
+        save_path = os.path.join(output_directory, f'{basepath}_{counter}_{category_name}.jpg')  
+        counter += 1
+        Image.fromarray(cropped_image).save(save_path)
 
 # ~ # Object Detection
 # ~ interpreter = tf.lite.Interpreter(model_path='./gbif_model.tflite')
@@ -29,6 +126,7 @@ import pandas as pd
     # ~ """Returns a list of detection results, each a dictionary of object info."""
 
     # ~ signature_fn = interpreter.get_signature_runner()
+    # ~ print(signature_fn)
 
     # ~ # Feed the input image to the model
     # ~ output = signature_fn(images=image)
@@ -49,6 +147,84 @@ import pandas as pd
             # ~ }
             # ~ results.append(result)
     # ~ return results
+    
+# ~ def set_input_tensor(interpreter, image):
+  # ~ """Sets the input tensor."""
+  # ~ tensor_index = interpreter.get_input_details()[0]['index']
+  # ~ input_tensor = interpreter.tensor(tensor_index)()[0]
+  # ~ input_tensor[:, :] = image
+
+
+# ~ def get_output_tensor(interpreter, index):
+  # ~ """Returns the output tensor at the given index."""
+  # ~ output_details = interpreter.get_output_details()[index]
+  # ~ tensor = np.squeeze(interpreter.get_tensor(output_details['index']))
+  # ~ return tensor
+  
+
+# ~ def detect_objects3(interpreter, image, threshold):
+  # ~ """Returns a list of detection results, each a dictionary of object info."""
+  # ~ output = interpreter.get_output_details()  # Model has single output.
+  # ~ input = interpreter.get_input_details()  # Model has single input.
+  # ~ #input_data = tf.constant(1., shape=[1, 1])
+  # ~ interpreter.set_tensor(input['index'], image)
+  # ~ interpreter.invoke()
+  # ~ print(interpreter.get_tensor(output['index']))
+
+  # ~ # Get all output details
+  # ~ boxes = get_output_tensor(interpreter, 0)
+  # ~ classes = get_output_tensor(interpreter, 1)
+  # ~ scores = get_output_tensor(interpreter, 2)
+  
+  # ~ print(boxes)
+  # ~ print(classes)
+  
+  # ~ #count = int(get_output_tensor(interpreter, 3))
+  
+
+
+  # ~ results = []
+  # ~ for i in range(1):
+    # ~ if scores[i] >= threshold:
+      # ~ result = {
+          # ~ 'bounding_box': boxes[i],
+          # ~ 'class_id': classes[i],
+          # ~ 'score': scores[i]
+      # ~ }
+      # ~ results.append(result)
+  # ~ return results
+    
+# ~ def detect_objects3(interpreter, image, threshold):
+    # ~ """Returns a list of detection results, each a dictionary of object info."""
+    
+    # ~ # Set input tensor
+    # ~ interpreter.set_tensor(interpreter.get_input_details()[0]['index'], image)
+
+    # ~ # Run inference
+    # ~ interpreter.invoke()
+
+    # ~ # Get output details
+    # ~ output_details = interpreter.get_output_details()
+    # ~ print(output_details)
+
+    # ~ # Extract output tensors
+    # ~ boxes = interpreter.get_tensor(output_details[0]['index'])
+    # ~ classes = interpreter.get_tensor(output_details[1]['index'])
+    # ~ scores = interpreter.get_tensor(output_details[2]['index'])
+    # ~ count = int(interpreter.get_tensor(output_details[3]['index'])[0])  # Extract the scalar value
+
+    # ~ results = []
+    # ~ for i in range(count):
+        # ~ if scores[0, i] >= threshold:
+            # ~ result = {
+                # ~ 'bounding_box': boxes[0, i],
+                # ~ 'class_id': classes[0, i],
+                # ~ 'score': scores[0, i]
+            # ~ }
+            # ~ results.append(result)
+    # ~ return results
+
+
 
 # ~ def run_odt_and_draw_results(image_path, interpreter, threshold=0.5, label=True, width=12):
     # ~ """Run object detection on the input image and draw the detection results"""
@@ -99,27 +275,12 @@ import pandas as pd
 
 print('Now running species classification!!!')
 
+region='singapore'
 
 # Species Inference
-interpreter = tf.lite.Interpreter(model_path="./resnet_singapore.tflite")
-species_names = json.load(open('./01_singapore_data_numeric_labels.json', 'r'))
+interpreter = tf.lite.Interpreter(model_path=f"./resnet_{region}.tflite")
+species_names = json.load(open(f'./01_{region}_data_numeric_labels.json', 'r'))
 species_names = species_names['species_list']
-
-def tflite_inference(image, interpreter, print_time=False):
-    a = datetime.datetime.now()
-    interpreter.set_tensor(input_details[0]['index'], image.unsqueeze(0))
-    interpreter.invoke()
-    outputs_tf = interpreter.get_tensor(output_details[0]['index'])
-    prediction_tf = np.squeeze(outputs_tf)
-    confidence = np.exp(prediction_tf)/np.sum(np.exp(prediction_tf))
-    prediction_tf = prediction_tf.argsort()[::-1][0]
-   
-    b = datetime.datetime.now()
-    c = b - a
-    if print_time: print(str(c.microseconds) + "\u03bcs")
-    return(prediction_tf, max(confidence)*100, str(c.microseconds))
-
-
 
 input_details = interpreter.get_input_details()
 output_details = interpreter.get_output_details()
@@ -129,26 +290,44 @@ interpreter.allocate_tensors()
 # list the files in the common species folder
 all_images = os.listdir('./cropped_common_species')
 
+def tflite_inference(image, interpreter, print_time=False):
+    a = datetime.datetime.now()
+    
+    input_data = np.expand_dims(image, axis=0)
+    input_data = input_data.astype(np.float32)
+    input_data = np.transpose(input_data, (0, 3, 1, 2))
+    
+    interpreter.set_tensor(input_details[0]['index'], input_data)
+    interpreter.invoke()
+    outputs_tf = interpreter.get_tensor(output_details[0]['index'])
+    prediction_tf = np.squeeze(outputs_tf)
+    confidence = np.exp(prediction_tf) / np.sum(np.exp(prediction_tf))
+    prediction_tf = prediction_tf.argsort()[::-1][0]
+
+    b = datetime.datetime.now()
+    c = b - a
+    if print_time: print(str(c.microseconds) + "\u03bcs")
+    return prediction_tf, max(confidence) * 100, str(c.microseconds)
 
 file_path = []
 truth = []
 pred = []
 confidence = []
 time = []
+
 for image_file in all_images:
     image_path = './cropped_common_species/' + image_file
-    image = Image.open(image_path)
-    transform = torchvision.transforms.Compose(
-        [
-            torchvision.transforms.Resize((300, 300)),
-            torchvision.transforms.ToTensor(),
-            torchvision.transforms.Normalize([0.5, 0.5, 0.5], [0.5, 0.5, 0.5]),
-        ]
-    )
-    img = transform(image)
+    image = Image.open(image_path).convert("RGB")  # Convert to RGB mode
+
+    # Resize the image
+    resized_image = image.resize((300, 300))
+
+    # Convert to NumPy array and normalize
+    img = np.array(resized_image) / 255.0
+    img = (img - 0.5) / 0.5
 
     tflite_inf, conf, inf_time = tflite_inference(img, interpreter)
-    
+
     file_path = file_path + [image_file]
     truth = truth + [' '.join(image_file.split('/')[-1].split('_')[-3:-1])]
     pred = pred + [species_names[tflite_inf]]
@@ -159,5 +338,8 @@ df = pd.DataFrame({'path':file_path, 'inference_time':time, 'truth':truth, 'pred
 df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
 
 df = df.sort_values('confidence', ascending=False)
+
+df.to_csv(f'./results/{region}_predictions.csv', index=False)
+
 
 print(df)
