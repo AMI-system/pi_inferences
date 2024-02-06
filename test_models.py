@@ -59,11 +59,15 @@ def get_detections(detection_result):
         return(detections_list)
 
 
-
 # list images in path
 image_dir = './common_species/'
 images = os.listdir(image_dir)
 output_directory = './cropped_common_species/'
+
+raw_image_paths = []
+crop_image_paths = []
+moth_class = []
+boxes = []
 
 for image_path in images:
     print(image_dir + image_path)
@@ -90,13 +94,23 @@ for image_path in images:
 
         # Crop the original image
         cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
-
-        # Save the cropped image
         category_name = detection['categories'][0]['category_name']
+        
+         # Save the cropped image
         basepath = os.path.basename(image_path)
         save_path = os.path.join(output_directory, f'{basepath}_{counter}_{category_name}.jpg')  
-        counter += 1
+        
         Image.fromarray(cropped_image).save(save_path)
+
+        raw_image_paths = raw_image_paths + [image_path]
+        crop_image_paths = crop_image_paths + [save_path]
+        moth_class = moth_class + [category_name]
+        boxes = boxes + [bounding_box]
+        
+        counter += 1
+        
+
+       
 
 #########################################
 # Species Classification
@@ -117,7 +131,7 @@ output_details = interpreter.get_output_details()
 interpreter.allocate_tensors()
 
 # list the files in the common species folder
-all_images = os.listdir('./cropped_common_species')
+all_images = crop_image_paths #os.listdir('./cropped_common_species')
 
 def tflite_inference(image, interpreter, print_time=False):
     a = datetime.datetime.now()
@@ -138,15 +152,13 @@ def tflite_inference(image, interpreter, print_time=False):
     if print_time: print(str(c.microseconds) + "\u03bcs")
     return prediction_tf, max(confidence) * 100, str(c.microseconds)
 
-file_path = []
 truth = []
 pred = []
 confidence = []
 time = []
 
 for image_file in all_images:
-    image_path = './cropped_common_species/' + image_file
-    image = Image.open(image_path).convert("RGB")  # Convert to RGB mode
+    image = Image.open(image_file).convert("RGB")  # Convert to RGB mode
 
     # Resize the image
     resized_image = image.resize((300, 300))
@@ -157,13 +169,22 @@ for image_file in all_images:
 
     tflite_inf, conf, inf_time = tflite_inference(img, interpreter)
 
-    file_path = file_path + [image_file]
     truth = truth + [' '.join(image_file.split('/')[-1].split('_')[0:2])]
     pred = pred + [species_names[tflite_inf]]
     confidence = confidence + [conf]
     time = time + [inf_time]
 
-df = pd.DataFrame({'path':file_path, 'inference_time':time, 'truth':truth, 'pred':pred, 'confidence':confidence})
+df = pd.DataFrame({'image_path': raw_image_paths, 
+                  'moth_class': moth_class,
+                  'bounding_box': ['; '.join(map(str, x)) for x in boxes], 
+                  'crop_path': crop_image_paths,
+                  'species_inference_time':time, 
+                  'truth':truth, 
+                  'pred':pred, 
+                  'confidence':confidence
+                  })
+                  
+                 
 df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
 
 df = df.sort_values('confidence', ascending=False)
