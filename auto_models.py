@@ -3,6 +3,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 # For object detection
+import cv2
 import datetime
 import numpy as np
 import os
@@ -16,6 +17,8 @@ import numpy as np
 import json
 import tensorflow as tf
 import pandas as pd
+
+from PIL import ImageDraw
 
 #########################################
 # Moth Detection
@@ -110,6 +113,7 @@ class NewFileHandler(FileSystemEventHandler):
         
         #print(image_dir + image_path)
         image = np.asarray(Image.open(image_path))
+        annot_image = image.copy()
 
 		# Create a TensorImage object from the RGB image.
         input_tensor = vision.TensorImage.create_from_array(image)
@@ -123,11 +127,11 @@ class NewFileHandler(FileSystemEventHandler):
 		
         counter = 1
 		
-        raw_image_paths = []
-        crop_image_paths = []
-        moth_class = []
-        boxes = []
-        detection_time = []
+        # raw_image_paths = []
+        # crop_image_paths = []
+        # moth_class = []
+        # boxes = []
+        # detection_time = []
         		
 		# Draw bounding boxes on the image
         for detection in detections_list:
@@ -137,6 +141,8 @@ class NewFileHandler(FileSystemEventHandler):
 			# Crop the original image
             cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
             category_name = detection['categories'][0]['category_name']
+            
+            
 			
 			# Save the cropped image
             basepath = os.path.splitext(os.path.basename(image_path))[0]
@@ -157,6 +163,12 @@ class NewFileHandler(FileSystemEventHandler):
             img = (img - 0.5) / 0.5
 
             tflite_inf, conf, inf_time = tflite_inference(img, interpreter)
+            
+            # Draw bounding box on the original image
+            cv2.rectangle(annot_image, (origin_x, origin_y), (origin_x + width, origin_y + height), (255, 0, 0), 2)  # Change color and thickness as needed
+            
+            # Draw label
+            cv2.putText(annot_image, species_names[tflite_inf], (origin_x, origin_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
 
             df = pd.DataFrame({'image_path': [image_path], 
                             'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
@@ -175,6 +187,11 @@ class NewFileHandler(FileSystemEventHandler):
             
             # append this df 
             df.to_csv(f'./results/{region}_predictions.csv', index=False, mode='a', header=False)
+            
+        # Save annotated image
+        annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/', os.path.basename(image_path))  # Modify the path as needed
+        cv2.imwrite(annotated_image_path, annot_image)
+
                     
 
 def monitor_directory(path):
@@ -192,8 +209,3 @@ def monitor_directory(path):
 if __name__ == "__main__":
     directory_to_watch = "/home/pi/Desktop/model_data_bookworm/watch_folder"
     monitor_directory(directory_to_watch)
-
-
-       
-
-
