@@ -111,9 +111,10 @@ class NewFileHandler(FileSystemEventHandler):
         print(f"Performing inferences on: {event.src_path}")
         image_path = event.src_path
         
-        #print(image_dir + image_path)
         image = np.asarray(Image.open(image_path))
         annot_image = image.copy()
+        annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/', 
+                                            os.path.basename(image_path))  
 
 		# Create a TensorImage object from the RGB image.
         input_tensor = vision.TensorImage.create_from_array(image)
@@ -126,34 +127,32 @@ class NewFileHandler(FileSystemEventHandler):
         c = b - a
 		
         counter = 1
-		
-        # raw_image_paths = []
-        # crop_image_paths = []
-        # moth_class = []
-        # boxes = []
-        # detection_time = []
         		
 		# Draw bounding boxes on the image
         for detection in detections_list:
             bounding_box = detection['bounding_box']
-            origin_x, origin_y, width, height = (bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height'])
+            origin_x, origin_y, width, height = (bounding_box['origin_x'], 
+                                                 bounding_box['origin_y'], 
+                                                 bounding_box['width'], 
+                                                 bounding_box['height'])
 
 			# Crop the original image
             cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
             category_name = detection['categories'][0]['category_name']
             
             
-			
-			# Save the cropped image
-            basepath = os.path.splitext(os.path.basename(image_path))[0]
-            
-            save_path = os.path.join('/home/pi/Desktop/model_data_bookworm/cropped_common_species/', f'{basepath}_{counter}_{category_name}.jpg')  
-            print(save_path)
-            Image.fromarray(cropped_image).save(save_path)
+			# If you want to save the cropped image
+            #basepath = os.path.splitext(os.path.basename(image_path))[0]
+            #save_path = os.path.join('/home/pi/Desktop/model_data_bookworm/cropped_common_species/', f'{basepath}_{counter}_{category_name}.jpg')  
+            #print(save_path)
+            #Image.fromarray(cropped_image).save(save_path)
 			
             counter += 1
             
-            class_image = Image.open(save_path).convert("RGB")
+            #class_image = Image.open(save_path).convert("RGB")
+
+            class_image = Image.fromarray(cropped_image)
+            class_image = class_image.convert("RGB")
 
             # Resize the image
             resized_image = class_image.resize((300, 300))
@@ -165,19 +164,34 @@ class NewFileHandler(FileSystemEventHandler):
             tflite_inf, conf, inf_time = tflite_inference(img, interpreter)
             
             # Draw bounding box on the original image
-            cv2.rectangle(annot_image, (origin_x, origin_y), (origin_x + width, origin_y + height), (255, 0, 0), 2)  # Change color and thickness as needed
             
-            # Draw label
-            cv2.putText(annot_image, species_names[tflite_inf], (origin_x, origin_y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 2)
+            if category_name == 'moth':
+                cv2.rectangle(annot_image, 
+                            (origin_x, origin_y), 
+                            (origin_x + width, origin_y + height), 
+                            (80, 200, 120), 4)  
+                
+                cv2.putText(annot_image, 
+                            text=species_names[tflite_inf], 
+                            org=(origin_x, origin_y - 10), 
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX, 
+                            fontScale=1.5, 
+                            color=(80, 200, 120), 
+                            thickness=4)
+            else:
+                cv2.rectangle(annot_image, 
+                            (origin_x, origin_y), 
+                            (origin_x + width, origin_y + height), 
+                            (238, 75, 43), 4)
 
             df = pd.DataFrame({'image_path': [image_path], 
                             'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
                             'moth_class': [category_name],
                             'detection_time': [str(c.microseconds)],
                             'bounding_box': ['; '.join(map(str, bounding_box))], 
-                            'crop_path': [save_path],
+                            'annot_path': [annotated_image_path],
                             'species_inference_time': [inf_time], 
-                            'truth': [' '.join(save_path.split('/')[-1].split('_')[0:2])], 
+                            'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])], 
                             'pred': [species_names[tflite_inf]], 
                             'confidence': [conf],
                             'model': [region]
@@ -189,10 +203,7 @@ class NewFileHandler(FileSystemEventHandler):
             df.to_csv(f'./results/{region}_predictions.csv', index=False, mode='a', header=False)
             
         # Save annotated image
-        annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/', os.path.basename(image_path))  # Modify the path as needed
-        cv2.imwrite(annotated_image_path, annot_image)
-
-                    
+        cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
 def monitor_directory(path):
     event_handler = NewFileHandler()
