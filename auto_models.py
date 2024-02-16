@@ -5,6 +5,7 @@ from watchdog.events import FileSystemEventHandler
 # For object detection
 import cv2
 import datetime
+import time
 import numpy as np
 import os
 from PIL import Image
@@ -109,6 +110,7 @@ class NewFileHandler(FileSystemEventHandler):
         if event.is_directory:
             return
         print(f"Performing inferences on: {event.src_path}")
+        time.sleep(0.5) # need to give the image time to be written to disk
         image_path = event.src_path
         
         image = np.asarray(Image.open(image_path))
@@ -127,7 +129,8 @@ class NewFileHandler(FileSystemEventHandler):
         c = b - a
 		
         counter = 1
-        		
+        
+        print(str(len(detections_list)) + " detections")
 		# Draw bounding boxes on the image
         for detection in detections_list:
             bounding_box = detection['bounding_box']
@@ -163,26 +166,39 @@ class NewFileHandler(FileSystemEventHandler):
 
             tflite_inf, conf, inf_time = tflite_inference(img, interpreter)
             
-            # Draw bounding box on the original image
             
+            # Get image dimensions
+            im_width, im_height = class_image.size
+            ymax = origin_y - 10
+            if ymax < 0: ymax = origin_y + height + 20                
+            
+            # Draw bounding box on the original image          
             if category_name == 'moth':
                 cv2.rectangle(annot_image, 
                             (origin_x, origin_y), 
                             (origin_x + width, origin_y + height), 
-                            (80, 200, 120), 4)  
+                            (46, 139, 87), 4)  
                 
                 cv2.putText(annot_image, 
                             text=species_names[tflite_inf], 
-                            org=(origin_x, origin_y - 10), 
+                            org=(origin_x, ymax), 
                             fontFace=cv2.FONT_HERSHEY_SIMPLEX, 
                             fontScale=1.5, 
-                            color=(80, 200, 120), 
+                            color=(46, 139, 87), 
                             thickness=4)
             else:
                 cv2.rectangle(annot_image, 
                             (origin_x, origin_y), 
                             (origin_x + width, origin_y + height), 
                             (238, 75, 43), 4)
+                
+                cv2.putText(annot_image, 
+                            text=species_names[tflite_inf], 
+                            org=(origin_x, ymax), 
+                            fontFace=cv2.FONT_HERSHEY_SIMPLEX, 
+                            fontScale=1.5, 
+                            color=(238, 75, 43), 
+                            thickness=4)
 
             df = pd.DataFrame({'image_path': [image_path], 
                             'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
