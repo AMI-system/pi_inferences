@@ -11,15 +11,14 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from tflite_support.task import core, processor, vision
 
-# Function to get detections from the detection result
 def get_detections(detection_result):
-    """_summary_
+    """get detections from the detection result and convert to list of dicts
 
     Args:
-        detection_result (_type_): _description_
+        detection_result (tensorflow_lite_support.python.task.processor.proto.detections_pb2.DetectionResult): The object detection results from the model
 
     Returns:
-        _type_: _description_
+        list: a list of dictionaries with the detection information
     """
     detections_list = []
 
@@ -27,7 +26,7 @@ def get_detections(detection_result):
         bounding_box = detection.bounding_box
         origin_x, origin_y, width, height = bounding_box.origin_x, bounding_box.origin_y, bounding_box.width, bounding_box.height
 
-        category_info = detection.categories[0]  # Assuming one category per detection
+        category_info = detection.categories[0]
         category_dict = {
             'index': category_info.index,
             'score': category_info.score,
@@ -38,8 +37,10 @@ def get_detections(detection_result):
         detection_dict = {
             'counter': counter,
             'bounding_box': {
-                'origin_x': origin_x, 'origin_y': origin_y,
-                'width': width, 'height': height,
+                'origin_x': origin_x,
+                'origin_y': origin_y,
+                'width': width,
+                'height': height,
             },
             'categories': [category_dict],
         }
@@ -48,8 +49,19 @@ def get_detections(detection_result):
 
     return detections_list
 
-# Function for TensorFlow Lite inference
 def tflite_inference(image, interpreter):
+    """_summary_
+
+    Args:
+        image (numpy.ndarray): A numpy array representing the image
+        interpreter (tensorflow.lite.python.interpreter.Interpreter): The tflite interpreter
+
+    Returns:
+        prediction_tf (numpy.int64): The index of the predicted class
+        confidence (numpy.float64): The confidence of the prediction
+        time (str): The time taken for inference (microseconds)
+    """
+
     a = datetime.datetime.now()
     input_data = np.expand_dims(image, axis=0).astype(np.float32)
     input_data = np.transpose(input_data, (0, 3, 1, 2))
@@ -61,10 +73,16 @@ def tflite_inference(image, interpreter):
     prediction_tf = prediction_tf.argsort()[::-1][0]
     c = datetime.datetime.now()
     c = c - a
+
     return prediction_tf, max(confidence) * 100, str(c.microseconds)
 
-# Function to handle file creation events
 def handle_file_creation(event):
+    """handle file creation events: perform moth detection and species
+    classification. Save results to csv and annotated image.
+
+    Args:
+        event (watchdog.events.FileCreatedEvent): File creation event
+    """
     if event.is_directory:
         return
     print(f"Performing inferences on: {event.src_path}")
@@ -128,8 +146,12 @@ def handle_file_creation(event):
 
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
-# Function to monitor a directory for file creation events
 def monitor_directory(path):
+    """monitor a directory for file creation events
+
+    Args:
+        path (str): the path to the directory to monitor
+    """
     event_handler = FileSystemEventHandler()
     event_handler.on_created = handle_file_creation
     observer = Observer()
