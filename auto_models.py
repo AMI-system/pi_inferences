@@ -12,7 +12,7 @@ from watchdog.events import FileSystemEventHandler
 from tflite_support.task import core, processor, vision
 
 def get_detections(detection_result):
-    """get detections from the detection result and convert to list of dicts
+    """get moth detections from the detection result and convert to list of dicts
 
     Args:
         detection_result (tensorflow_lite_support.python.task.processor.proto.detections_pb2.DetectionResult): The object detection results from the model
@@ -49,8 +49,8 @@ def get_detections(detection_result):
 
     return detections_list
 
-def tflite_inference(image, interpreter):
-    """_summary_
+def species_inference(image, interpreter):
+    """Perform species classification on an image
 
     Args:
         image (numpy.ndarray): A numpy array representing the image
@@ -83,17 +83,19 @@ def handle_file_creation(event):
     Args:
         event (watchdog.events.FileCreatedEvent): File creation event
     """
+
+    # When image is added, load
     if event.is_directory:
         return
     print(f"Performing inferences on: {event.src_path}")
-    time.sleep(0.5)  # Give the image time to be written to disk
+    time.sleep(0.1)  # Give the image time to be written to disk
     image_path = event.src_path
-
     image = np.asarray(Image.open(image_path))
     annot_image = image.copy()
     annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/',
                                         os.path.basename(image_path))
 
+    # Perform moth detecion
     input_tensor = vision.TensorImage.create_from_array(image)
     a = datetime.datetime.now()
     detection_result = detector.detect(input_tensor)
@@ -106,38 +108,45 @@ def handle_file_creation(event):
         bounding_box = detection['bounding_box']
         origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
 
+        # Crop the image to the bounding box
         cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
         category_name = detection['categories'][0]['category_name']
-
+        insect_score = detection['categories'][0]['score']
         resized_image = Image.fromarray(cropped_image).convert("RGB").resize((300, 300))
         img = np.array(resized_image) / 255.0
         img = (img - 0.5) / 0.5
 
-        tflite_inf, conf, inf_time = tflite_inference(img, interpreter)
+        # Perform species classification
+        species_inf, conf, inf_time = species_inference(img, interpreter)
 
+        # If insect at image boundary move the label
         im_width, im_height = resized_image.size
-        ymax = origin_y - 10 if origin_y - 10 >= 0 else origin_y + height + 20
+        ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
 
+        # Add bounding box annotation to the image
         bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
+        ann_label = f"{species_names[species_inf]}, {conf:.2f}"
         cv2.rectangle(annot_image,
                       (origin_x, origin_y),
                       (origin_x + width, origin_y + height),
                       bbox_color, 4)
-        cv2.putText(annot_image, text=species_names[tflite_inf],
+        cv2.putText(annot_image, text=ann_label,
                     org=(origin_x, ymax),
                     fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=1.5, color=bbox_color, thickness=4)
+                    fontScale=1.2, color=bbox_color, thickness=4)
 
+        # Save inference results to csv
         df = pd.DataFrame({
             'image_path': [image_path],
             'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
             'moth_class': [category_name],
+            'insect_score': [insect_score],
             'detection_time': [str(c.microseconds)],
             'bounding_box': ['; '.join(map(str, bounding_box.values()))],
             'annot_path': [annotated_image_path],
             'species_inference_time': [inf_time],
             'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
-            'pred': [species_names[tflite_inf]],
+            'pred': [species_names[species_inf]],
             'confidence': [conf],
             'model': [region]
         })
