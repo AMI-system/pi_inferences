@@ -1,6 +1,6 @@
 # Pi inferences
 
-This repository contains scripts to run inferences on embedded device. The scripts firstly perform insect detection on images, followed by species classification of the insect crops. 
+This repository contains scripts to run inferences on embedded device. The scripts firstly perform insect detection on images, followed by species classification of the insect crops.
 
 
 ## Set-up on Pi
@@ -47,3 +47,22 @@ Update pip
 ```
 pip install -r requirements.txt
 ```
+
+### Run the Inference
+
+There are several scripts which serve the following purpose:
+- `auto_models.py`: is an automated script which runs the insect detection and species classification _**when images are added**_ to the `watch_folder` directory
+- `test_models.py`: runs the insect detection and species classification on given images
+- `memory_recorder.py`: records the memory usage of the Pi and saves the output to `plots`
+
+
+The primary usecase on the Pi is therefore using `auto_models.py`. To run the script, use the following commands:
+
+```
+source venv_3.9/bin/activate
+python auto_models.py
+```
+
+* Add: and image to the `watch_folder` directory *
+
+Then the script will run the insect detection and species classification on the image. The inference results will be saved to a csv in `results` directory, and an annotated version of the image, with labelled bounding boxes, will be added to `annotated_images`.

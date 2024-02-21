@@ -55,8 +55,8 @@ def get_detections(detection_result):
         }
 
         detections_list.append(detection_dict)
-        
-        return(detections_list)
+
+    return(detections_list)
 
 
 # list images in path
@@ -68,6 +68,7 @@ raw_image_paths = []
 crop_image_paths = []
 moth_class = []
 boxes = []
+detection_time = []
 
 for image_path in images:
     print(image_dir + image_path)
@@ -75,13 +76,17 @@ for image_path in images:
 
     # Create a TensorImage object from the RGB image.
     input_tensor = vision.TensorImage.create_from_array(image)
-    
-    # Get the inferences 
-    detection_result = detector.detect(input_tensor)    
+
+    # Get the inferences
+    a = datetime.datetime.now()
+    detection_result = detector.detect(input_tensor)
     detections_list = get_detections(detection_result)
-    
+    b = datetime.datetime.now()
+    c = b - a
+
     counter = 1
-    
+    print(len(detections_list))
+
     # Draw bounding boxes on the image
     for detection in detections_list:
         bounding_box = detection['bounding_box']
@@ -95,22 +100,23 @@ for image_path in images:
         # Crop the original image
         cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
         category_name = detection['categories'][0]['category_name']
-        
+
          # Save the cropped image
         basepath = os.path.basename(image_path)
-        save_path = os.path.join(output_directory, f'{basepath}_{counter}_{category_name}.jpg')  
-        
+        save_path = os.path.join(output_directory, f'{basepath}_{counter}_{category_name}.jpg')
+
         Image.fromarray(cropped_image).save(save_path)
 
         raw_image_paths = raw_image_paths + [image_path]
         crop_image_paths = crop_image_paths + [save_path]
         moth_class = moth_class + [category_name]
         boxes = boxes + [bounding_box]
-        
-        counter += 1
-        
+        detection_time = detection_time + [str(c.microseconds)]
 
-       
+        counter += 1
+
+
+
 
 #########################################
 # Species Classification
@@ -118,7 +124,7 @@ for image_path in images:
 
 print('Now running species classification!!!')
 
-region='singapore'
+region='uk'
 
 # Species Inference
 interpreter = tf.lite.Interpreter(model_path=f"./resnet_{region}.tflite")
@@ -135,11 +141,11 @@ all_images = crop_image_paths #os.listdir('./cropped_common_species')
 
 def tflite_inference(image, interpreter, print_time=False):
     a = datetime.datetime.now()
-    
+
     input_data = np.expand_dims(image, axis=0)
     input_data = input_data.astype(np.float32)
     input_data = np.transpose(input_data, (0, 3, 1, 2))
-    
+
     interpreter.set_tensor(input_details[0]['index'], input_data)
     interpreter.invoke()
     outputs_tf = interpreter.get_tensor(output_details[0]['index'])
@@ -174,17 +180,18 @@ for image_file in all_images:
     confidence = confidence + [conf]
     time = time + [inf_time]
 
-df = pd.DataFrame({'image_path': raw_image_paths, 
+df = pd.DataFrame({'image_path': raw_image_paths,
                   'moth_class': moth_class,
-                  'bounding_box': ['; '.join(map(str, x)) for x in boxes], 
+                  'detection_time': detection_time,
+                  'bounding_box': ['; '.join(map(str, x)) for x in boxes],
                   'crop_path': crop_image_paths,
-                  'species_inference_time':time, 
-                  'truth':truth, 
-                  'pred':pred, 
+                  'species_inference_time':time,
+                  'truth':truth,
+                  'pred':pred,
                   'confidence':confidence
                   })
-                  
-                 
+
+
 df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
 
 df = df.sort_values('confidence', ascending=False)

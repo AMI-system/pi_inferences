@@ -160,9 +160,10 @@ cython_debug/
 #.idea/
 
 # model files
-*.tflite
-*.json
-results/
-common_species/
-cropped_common_species/
-model_venv/
+models/*
+results/*
+venv_3.9/
+annotated_images/*
+watch_folder/*
+plots/*
+example_images/
