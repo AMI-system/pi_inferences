@@ -98,85 +98,116 @@ def species_inference(crop_image, species_interpreter):
 
     return prediction_tf, max(confidence) * 100, str(c.microseconds)
 
-# Configuration
-nclass = 2
-DETECTION_THRESHOLD = 0.1
-label_map = {1: 'moth', 2: 'nonmoth'}
-class_labels = ['moth', 'nonmoth']
-region = 'uk'
 
-# Load moth detection model
-moth_interpreter = tf.lite.Interpreter(model_path='./models/gbif_model_metadata.tflite')
-moth_interpreter.allocate_tensors()
+def perform_inferences(image_path,
+                    moth_model_path,
+                    species_model_path,
+                    species_labels,
+                    annotated_image_path,
+                    output_csv_path,
+                    moth_threshold=0.1):
+    """Takes and image then runs moth detection and species classification on it. Saves the annotated image and inference results to csv.
 
-# Load species classification model
-species_interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
-species_interpreter.allocate_tensors()
-species_names = json.load(open(f'./models/01_{region}_data_numeric_labels.json', 'r'))['species_list']
+    Args:
+        image_path (str): path for image to be processed
+        moth_model_path (str): path to the tflite object detection model
+        species_model_path (str): path to the tflite species classification model
+        species_labels (str): path to the json file containing species labels
+        annotated_image_path (str): path to save the annotated image
+        output_csv_path (str): path to save the csv file containing inference results
+        moth_threshold (float, optional): Theshold for object detection. Defaults to 0.1. 0 includes all detections.
+    """
 
-# Load input image
-image_path = './example_images/ami_ami_20230722000010-00-35.jpg'
-image = np.asarray(Image.open(image_path))
-annot_image = image.copy()
-annotated_image_path = os.path.join('./annotated_images/',
-                                        os.path.basename(image_path))
+    # Load moth detection model
+    moth_interpreter = tf.lite.Interpreter(model_path=moth_model_path)
+    moth_interpreter.allocate_tensors()
 
-# Run moth detection
-detections_list, original_image, det_time = run_moth_detection(image_path, moth_interpreter, threshold=DETECTION_THRESHOLD)
-original_image_np = original_image.numpy().astype(np.uint8)
+    # Load species classification model
+    species_interpreter = tf.lite.Interpreter(model_path=species_model_path)
+    species_interpreter.allocate_tensors()
+    species_names = json.load(open(species_labels, 'r'))['species_list']
 
-# Process each detected moth
-for detection in detections_list:
-    bounding_box = detection['bounding_box']
+    # Load input image
+    image = np.asarray(Image.open(image_path))
+    annot_image = image.copy()
 
-    origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
+    # Run moth detection
+    detections_list, original_image, det_time = run_moth_detection(image_path, moth_interpreter, threshold=moth_threshold)
+    original_image_np = original_image.numpy().astype(np.uint8)
 
-    # convert these to pixels
-    xmin = int(origin_x * original_image_np.shape[1])
-    xmax = int((origin_x + width) * original_image_np.shape[1])
-    ymin = int(origin_y * original_image_np.shape[0])
-    ymax = int((origin_y + height) * original_image_np.shape[0])
+    # Process each detected moth
+    for detection in detections_list:
+        bounding_box = detection['bounding_box']
+        origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
 
-    # Slice the image using integer indices
-    cropped_image = image[ymin:ymax, xmin:xmax]
-    category_name = detection['categories'][0]['category_name']
-    insect_score = detection['categories'][0]['score']
-    resized_image = Image.fromarray(cropped_image).convert("RGB").resize((300, 300))
-    img = np.array(resized_image) / 255.0
-    img = (img - 0.5) / 0.5
+        # convert these to pixels
+        xmin = int(origin_x * original_image_np.shape[1])
+        xmax = int((origin_x + width) * original_image_np.shape[1])
+        ymin = int(origin_y * original_image_np.shape[0])
+        ymax = int((origin_y + height) * original_image_np.shape[0])
 
-    # Perform species classification
-    species_inf, conf, inf_time = species_inference(crop_image=img, species_interpreter=species_interpreter)
+        # Slice the image using integer indices
+        cropped_image = image[ymin:ymax, xmin:xmax]
+        category_name = detection['categories'][0]['category_name']
+        insect_score = detection['categories'][0]['score']
+        resized_image = Image.fromarray(cropped_image).convert("RGB").resize((300, 300))
+        img = np.array(resized_image) / 255.0
+        img = (img - 0.5) / 0.5
 
-    # Add bounding box annotation to the image
-    bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
-    ann_label = f"{species_names[species_inf]}, {conf:.2f}"
-    cv2.rectangle(annot_image,
-                    (xmin, ymin),
-                    (xmax, ymax),
-                    bbox_color, 4)
-    cv2.putText(annot_image, text=ann_label,
-                org=(xmin, ymin),
-                fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                fontScale=1.2, color=bbox_color, thickness=4)
+        # Perform species classification
+        species_inf, conf, inf_time = species_inference(crop_image=img, species_interpreter=species_interpreter)
 
-    # Save inference results to csv
-    df = pd.DataFrame({
-        'image_path': [image_path],
-        'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-        'moth_class': [category_name],
-        'insect_score': [insect_score],
-        'detection_time': [det_time],
-        'bounding_box': ['; '.join(map(str, [xmin, ymin, xmax, ymax]))],
-        'annot_path': [annotated_image_path],
-        'species_inference_time': [inf_time],
-        'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
-        'pred': [species_names[species_inf]],
-        'confidence': [conf],
-        'model': [region]
-    })
-    df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
-    df.to_csv(f'./results/{region}_predictions.csv', index=False, mode='a', header=False)
+        # Add bounding box annotation to the image
+        bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
+        ann_label = f"{species_names[species_inf]}, {conf:.2f}"
+        cv2.rectangle(annot_image,
+                        (xmin, ymin),
+                        (xmax, ymax),
+                        bbox_color, 4)
+        cv2.putText(annot_image, text=ann_label,
+                    org=(xmin, ymin),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=1.2, color=bbox_color, thickness=4)
 
-print('Saved annotated image to: ', annotated_image_path)
-cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+        # Save inference results to csv
+        df = pd.DataFrame({
+            'image_path': [image_path],
+            'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+            'moth_class': [category_name],
+            'insect_score': [insect_score],
+            'detection_time': [det_time],
+            'bounding_box': ['; '.join(map(str, [xmin, ymin, xmax, ymax]))],
+            'annot_path': [annotated_image_path],
+            'species_inference_time': [inf_time],
+            'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
+            'pred': [species_names[species_inf]],
+            'confidence': [conf],
+            'model': [region]
+        })
+        df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
+        df.to_csv(output_csv_path, index=False, mode='a', header=False)
+
+    print('Saved annotated image to: ', annotated_image_path)
+    cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+
+
+if __name__ == "__main__":
+    moth_model_path = './models/gbif_model_metadata.tflite'
+    class_labels = ['moth', 'nonmoth']
+    moth_threshold=0.1
+
+    region = 'uk'
+    species_model_path = f"./models/resnet_{region}.tflite"
+    species_labels = f'./models/01_{region}_data_numeric_labels.json'
+
+    image_path = './example_images/ami_ami_20230722000010-00-35.jpg'
+    annotated_image_path = os.path.join('./annotated_images/',os.path.basename(image_path))
+    output_csv_path = f'./results/{region}_predictions.csv'
+
+    perform_inferences(image_path,
+                    moth_model_path,
+                    species_model_path,
+                    species_labels,
+                    annotated_image_path,
+                    output_csv_path,
+                    moth_threshold)
