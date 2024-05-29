@@ -88,7 +88,7 @@ def handle_file_creation(event):
     if event.is_directory:
         return
     print(f"Performing inferences on: {event.src_path}")
-    time.sleep(0.1)  # Give the image time to be written to disk
+    time.sleep(1)  # Give the image time to be written to disk
     image_path = event.src_path
     image = np.asarray(Image.open(image_path))
     annot_image = image.copy()
