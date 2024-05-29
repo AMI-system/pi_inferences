@@ -179,7 +179,7 @@ if __name__ == "__main__":
     enable_edgetpu = False
     num_threads = 1
     region = 'uk'
-    directory_to_watch = "/home/pi/Desktop/model_data_bookworm/watch_folder"
+    directory_to_watch = "/media/pi/PiImages"
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
