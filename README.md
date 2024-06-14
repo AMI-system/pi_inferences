@@ -67,8 +67,6 @@ python auto_models.py
 
 Then the script will run the insect detection and species classification on the image. The inference results will be saved to a csv in `results` directory, and an annotated version of the image, with labelled bounding boxes, will be added to `annotated_images`.
 
-### Run on boot
-
 ### Run on Boot
 
 To run the inference automatically on boot, add the following line to the end of your user crontab (using the `crontab -e` command).
