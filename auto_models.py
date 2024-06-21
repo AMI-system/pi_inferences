@@ -92,7 +92,7 @@ def handle_file_creation(event):
     image_path = event.src_path
     image = np.asarray(Image.open(image_path))
     annot_image = image.copy()
-    annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/',
+    annotated_image_path = os.path.join(output_dir,
                                         os.path.basename(image_path))
 
     # Perform moth detecion
@@ -107,7 +107,6 @@ def handle_file_creation(event):
     for detection in detections_list:
         bounding_box = detection['bounding_box']
         origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
-
         # Crop the image to the bounding box
         cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
         category_name = detection['categories'][0]['category_name']
@@ -155,6 +154,18 @@ def handle_file_creation(event):
 
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
+    # convert the df to a dict
+    df_dict = df.to_dict(orient='records')[0]
+
+    # Save to a json
+    with open(f'./results/{region}_predictions.json', 'r') as f:
+        data = json.load(f)
+    data[len(data)+1] = df_dict
+    with open(f'./results/{region}_predictions.json', 'w') as f:
+        json.dump(data, f)
+
+    print("Image Done")
+
 def monitor_directory(path):
     """monitor a directory for file creation events
 
@@ -175,11 +186,11 @@ def monitor_directory(path):
 
 if __name__ == "__main__":
     # Configuration
-    model_path = './models/gbif_model_metadata.tflite'
+    model_path = '/home/pi/Documents/model_data_bookworm/models/gbif_model_metadata.tflite'
     enable_edgetpu = False
     num_threads = 1
     region = 'uk'
-    directory_to_watch = "/home/pi/Desktop/model_data_bookworm/watch_folder"
+    directory_to_watch = "/home/pi/Documents/model_data_bookworm/watch_folder/"
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
@@ -192,8 +203,9 @@ if __name__ == "__main__":
     detector = vision.ObjectDetector.create_from_options(options)
 
     # Species Classification Setup
-    interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
+    interpreter = tf.lite.Interpreter(model_path=f"/home/pi/Documents/model_data_bookworm/models/resnet_{region}.tflite")
     interpreter.allocate_tensors()
-    species_names = json.load(open(f'./models/01_{region}_data_numeric_labels.json', 'r'))['species_list']
+    species_names = json.load(open(f'/home/pi/Documents/model_data_bookworm/models/01_{region}_data_numeric_labels.json', 'r'))['species_list']
+    output_dir = './annotated_images/'
 
     monitor_directory(directory_to_watch)

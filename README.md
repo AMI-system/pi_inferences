@@ -34,14 +34,14 @@ rm Python-3.9.0.tar.xz
 ### Create venv
 
 ```
-python3.9 -m venv ./venv_3.9
-source venv_3.9/bin/activate
+python3.9 -m venv ./venv2
+source venv2/bin/activate
 ```
 
 Update pip
 
 ```
-/home/pi/Desktop/model_data_bookworm/venv_3.9/bin/python3.9 -m pip install --upgrade pip
+/home/pi/Documents/model_data_bookworm/venv2/bin/python3.9 -m pip install --upgrade pip
 ```
 
 ```
@@ -59,8 +59,8 @@ There are several scripts which serve the following purpose:
 The primary usecase on the Pi is therefore using `auto_models.py`. To run the script, use the following commands:
 
 ```
-source venv_3.9/bin/activate
-python auto_models.py
+source /home/pi/Documents/model_data_bookworm/venv_3.9/bin/activate
+python /home/pi/Documents/model_data_bookworm/auto_models.py &
 ```
 
 * Add: and image to the `watch_folder` directory *
