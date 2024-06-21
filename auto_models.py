@@ -6,7 +6,7 @@ import cv2
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, UnidentifiedImageError
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from tflite_support.task import core, processor, vision
@@ -88,9 +88,21 @@ def handle_file_creation(event):
     if event.is_directory:
         return
     print(f"Performing inferences on: {event.src_path}")
-    time.sleep(0.1)  # Give the image time to be written to disk
     image_path = event.src_path
+    max_loops = 20  # Wait for max 2 seconds for image to be written to disk
+    loop_counter = 0
+    while True:
+        try:
+            print("Waiting for image to be written to disk...")
+            time.sleep(0.1)  # Give the image time to be written to disk
+            image = np.asarray(Image.open(image_path))
+            break
+        except UnidentifiedImageError:
+            if loop_counter > max_loops:
+                print("Timeout reached. Unable to open image.")
+                return
     image = np.asarray(Image.open(image_path))
+    print("Opened image...")
     annot_image = image.copy()
     annotated_image_path = os.path.join(output_dir,
                                         os.path.basename(image_path))
@@ -190,7 +202,7 @@ if __name__ == "__main__":
     enable_edgetpu = False
     num_threads = 1
     region = 'uk'
-    directory_to_watch = "/home/pi/Documents/model_data_bookworm/watch_folder/"
+    directory_to_watch = "/media/pi/PiImages"
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
