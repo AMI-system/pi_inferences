@@ -104,7 +104,7 @@ def handle_file_creation(event):
     image = np.asarray(Image.open(image_path))
     print("Opened image...")
     annot_image = image.copy()
-    annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/',
+    annotated_image_path = os.path.join('/home/pi/Documents/model_data_bookworm/annotated_images/',
                                         os.path.basename(image_path))
 
     # Perform moth detecion
@@ -165,6 +165,25 @@ def handle_file_creation(event):
         df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
         df.to_csv(f'./results/{region}_predictions.csv', index=False, mode='a', header=False)
 
+
+        # load in the existing json and append the new data, and save as json
+        #json_df = pd.read_json(f'./results/{region}_predictions.json', lines=True)
+        with open(f'./results/{region}_predictions.json', 'r') as file:
+            data = json.load(file)
+
+        json_df = pd.DataFrame.from_dict(data, orient='index')
+        json_df = pd.concat([json_df, df])
+
+        records = json_df.to_dict(orient='records')
+        master_dict = {}
+        for index, record in enumerate(records):
+            master_dict[f'record_{index}'] = record
+
+        # Write the master dictionary to a JSON file
+        output_file_path = f'./results/{region}_predictions.json'
+        with open(output_file_path, 'w') as outfile:
+            json.dump(master_dict, outfile, indent=4)
+
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
 def monitor_directory(path):
@@ -191,7 +210,7 @@ if __name__ == "__main__":
     enable_edgetpu = False
     num_threads = 1
     region = 'uk'
-    directory_to_watch = "/media/pi/PiImages"
+    directory_to_watch = "/home/pi/Documents/model_data_bookworm/watch_folder"
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,

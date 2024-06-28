@@ -41,7 +41,7 @@ source venv_3.9/bin/activate
 Update pip
 
 ```
-/home/pi/Desktop/model_data_bookworm/venv_3.9/bin/python3.9 -m pip install --upgrade pip
+/home/pi/Documents/model_data_bookworm/venv_3.9/bin/python3.9 -m pip install --upgrade pip
 ```
 
 ```
