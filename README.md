@@ -41,7 +41,7 @@ source venv_3.9/bin/activate
 Update pip
 
 ```
-/home/pi/Desktop/model_data_bookworm/venv_3.9/bin/python3.9 -m pip install --upgrade pip
+/home/pi/Documents/model_data_bookworm/venv_3.9/bin/python3.9 -m pip install --upgrade pip
 ```
 
 ```
@@ -66,3 +66,12 @@ python auto_models.py
 * Add: and image to the `watch_folder` directory *
 
 Then the script will run the insect detection and species classification on the image. The inference results will be saved to a csv in `results` directory, and an annotated version of the image, with labelled bounding boxes, will be added to `annotated_images`.
+
+### Run on Boot
+
+To run the inference automatically on boot, add the following line to the end of your user crontab (using the `crontab -e` command).
+
+```bash
+@reboot bash -c "cd /home/pi/Desktop/model_data_bookworm && source venv_3.9/bin/activate && python auto_models.py"
+```
+
