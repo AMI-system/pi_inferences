@@ -78,7 +78,7 @@ def species_inference(image, interpreter):
 
 def handle_file_creation(event):
     """handle file creation events: perform moth detection and species
-    classification. Save results to csv [and annotated image].
+    classification. Save results to csv and annotated image.
 
     Args:
         event (watchdog.events.FileCreatedEvent): File creation event
@@ -103,9 +103,9 @@ def handle_file_creation(event):
                 return
     image = np.asarray(Image.open(image_path))
     print("Opened image...")
-    # annot_image = image.copy()
-    # annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/',
-    #                                     os.path.basename(image_path))
+    annot_image = image.copy()
+    annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/',
+                                        "most_recent_annotated_image.jpg")
 
     # Perform moth detecion
     input_tensor = vision.TensorImage.create_from_array(image)
@@ -131,21 +131,21 @@ def handle_file_creation(event):
         # Perform species classification
         species_inf, conf, inf_time = species_inference(img, interpreter)
 
-        # # If insect at image boundary move the label
-        # im_width, im_height = resized_image.size
-        # ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
+        # If insect at image boundary move the label
+        im_width, im_height = resized_image.size
+        ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
 
-        # # Add bounding box annotation to the image
-        # bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
-        # ann_label = f"{species_names[species_inf]}, {conf:.2f}"
-        # cv2.rectangle(annot_image,
-        #               (origin_x, origin_y),
-        #               (origin_x + width, origin_y + height),
-        #               bbox_color, 4)
-        # cv2.putText(annot_image, text=ann_label,
-        #             org=(origin_x, ymax),
-        #             fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-        #             fontScale=1.2, color=bbox_color, thickness=4)
+        # Add bounding box annotation to the image
+        bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
+        ann_label = f"{species_names[species_inf]}, {conf:.2f}"
+        cv2.rectangle(annot_image,
+                      (origin_x, origin_y),
+                      (origin_x + width, origin_y + height),
+                      bbox_color, 4)
+        cv2.putText(annot_image, text=ann_label,
+                    org=(origin_x, ymax),
+                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                    fontScale=1.2, color=bbox_color, thickness=4)
 
         # Save inference results to csv
         df = pd.DataFrame({
@@ -198,7 +198,7 @@ def handle_file_creation(event):
         with open(output_file_path, 'w') as outfile:
             json.dump(master_dict, outfile, indent=4)
 
-    # cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+    cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
 def monitor_directory(path):
     """monitor a directory for file creation events
