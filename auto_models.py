@@ -199,7 +199,7 @@ def handle_file_creation(event):
             json.dump(master_dict, outfile, indent=4)
 
         # Create a link to the file in directory_to_watch called predictions.json
-        os.system(f'ln -sf {output_file_path} {directory_to_watch}/predictions.json')
+        os.system(f'ln -sf {output_file_path} ./results/predictions.json')
 
     # cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
