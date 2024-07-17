@@ -211,7 +211,10 @@ if __name__ == "__main__":
     num_threads = 1
     region = 'uk'
     directory_to_watch = "/media/pi/PiImages"
-    results_path = "/media/pi/PiImages"
+    results_path = f"/media/pi/PiImages/results_{datetime.datetime.now().isoformat().replace(':', '_')}"
+
+    # Create results directory
+    os.makedirs(results_path, exist_ok=True)
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
