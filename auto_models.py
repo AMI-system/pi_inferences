@@ -177,14 +177,21 @@ def handle_file_creation(event):
             # Create a new json file
             data = {}
 
-        # Add the new record to the json (append)
-        json_df = pd.DataFrame.from_dict(data, orient='index')
-        json_df = pd.concat([json_df, df])
+        try:
 
-        records = json_df.to_dict(orient='records')
-        master_dict = {}
-        for index, record in enumerate(records):
-            master_dict[f'record_{index}'] = record
+            # Add the new record to the json (append)
+            json_df = pd.DataFrame.from_dict(data, orient='index')
+            json_df = pd.concat([json_df, df])
+
+            records = json_df.to_dict(orient='records')
+            master_dict = {}
+            for index, record in enumerate(records):
+                master_dict[f'record_{index}'] = record
+
+        except Exception as e:
+
+            print(f"Error: {e}")
+            master_dict = {}
 
         # Write the master dictionary to a JSON file
         output_file_path = f'{results_path}/predictions.json'
