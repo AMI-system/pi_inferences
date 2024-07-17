@@ -131,9 +131,9 @@ def handle_file_creation(event):
         # Perform species classification
         species_inf, conf, inf_time = species_inference(img, interpreter)
 
-        # If insect at image boundary move the label
-        im_width, im_height = resized_image.size
-        ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
+        # # If insect at image boundary move the label
+        # im_width, im_height = resized_image.size
+        # ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
 
         # # Add bounding box annotation to the image
         # bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
@@ -226,7 +226,7 @@ if __name__ == "__main__":
     model_path = './models/gbif_model_metadata.tflite'
     enable_edgetpu = False
     num_threads = 1
-    region = 'uk'
+    region = 'uk'  # TODO
     directory_to_watch = "/media/pi/PiImages"
     results_path = f"/media/pi/PiImages/results_{datetime.datetime.now().isoformat().replace(':', '_')}"
 
