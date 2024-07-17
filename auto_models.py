@@ -163,12 +163,12 @@ def handle_file_creation(event):
             'model': [region]
         })
         df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
-        df.to_csv(f'./results/{region}_predictions.csv', index=False, mode='a', header=False)
+        df.to_csv(f'{results_path}/{region}_predictions.csv', index=False, mode='a', header=False)
 
 
         # load in the existing json and append the new data, and save as json
         #json_df = pd.read_json(f'./results/{region}_predictions.json', lines=True)
-        with open(f'./results/{region}_predictions.json', 'r') as file:
+        with open(f'{results_path}/{region}_predictions.json', 'r') as file:
             data = json.load(file)
 
         json_df = pd.DataFrame.from_dict(data, orient='index')
@@ -180,7 +180,7 @@ def handle_file_creation(event):
             master_dict[f'record_{index}'] = record
 
         # Write the master dictionary to a JSON file
-        output_file_path = f'./results/{region}_predictions.json'
+        output_file_path = f'{results_path}/{region}_predictions.json'
         with open(output_file_path, 'w') as outfile:
             json.dump(master_dict, outfile, indent=4)
 
@@ -211,6 +211,7 @@ if __name__ == "__main__":
     num_threads = 1
     region = 'uk'
     directory_to_watch = "/media/pi/PiImages"
+    results_path = "/media/pi/PiImages"
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
