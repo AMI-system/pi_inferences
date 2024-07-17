@@ -165,12 +165,19 @@ def handle_file_creation(event):
         df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
         df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
 
+        # Check if the json file exists, if not create it and populate it with an 
+        if os.path.exists(f'{results_path}/predictions.json'):
 
-        # load in the existing json and append the new data, and save as json
-        #json_df = pd.read_json(f'./results/{region}_predictions.json', lines=True)
-        with open(f'{results_path}/predictions.json', 'r') as file:
-            data = json.load(file)
+            # Load in the existing json
+            with open(f'{results_path}/predictions.json', 'r') as file:
+                data = json.load(file)
 
+        else:
+
+            # Create a new json file
+            data = {}
+
+        # Add the new record to the json (append)
         json_df = pd.DataFrame.from_dict(data, orient='index')
         json_df = pd.concat([json_df, df])
 
