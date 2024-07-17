@@ -155,14 +155,14 @@ def handle_file_creation(event):
             'insect_score': [insect_score],
             'detection_time': [str(c.microseconds)],
             'bounding_box': ['; '.join(map(str, bounding_box.values()))],
-            'annot_path': [],  # [annotated_image_path],
+            # 'annot_path': [],  # [annotated_image_path],
             'species_inference_time': [inf_time],
-            'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
+            # 'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
             'pred': [species_names[species_inf]],
             'confidence': [conf],
             'model': [region]
         })
-        df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
+        # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
         df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
 
         # Check if the json file exists, if not create it and populate it with an 
