@@ -231,6 +231,10 @@ if __name__ == "__main__":
     os.makedirs(results_path, exist_ok=True)
 
     # Create a link to the file in directory_to_watch called predictions.json
+    try:
+        os.system(f'rm /home/pi/Desktop/model_data_bookworm/results')
+    except:
+        pass
     os.system(f'ln -sf {results_path} /home/pi/Desktop/model_data_bookworm/results')
 
     # Moth Detection Setup
