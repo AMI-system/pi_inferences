@@ -226,7 +226,7 @@ if __name__ == "__main__":
     model_path = './models/gbif_model_metadata.tflite'
     enable_edgetpu = False
     num_threads = 1
-    region = 'uk'  # TODO
+    region = 'thailand'
     directory_to_watch = "/media/pi/PiImages"
     results_path = f"/media/pi/PiImages/results_{datetime.datetime.now().isoformat().replace(':', '_')}"
 
