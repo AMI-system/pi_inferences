@@ -198,9 +198,6 @@ def handle_file_creation(event):
         with open(output_file_path, 'w') as outfile:
             json.dump(master_dict, outfile, indent=4)
 
-        # Create a link to the file in directory_to_watch called predictions.json
-        os.system(f'ln -sf {output_file_path} ./results/predictions.json')
-
     # cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
 def monitor_directory(path):
@@ -232,6 +229,9 @@ if __name__ == "__main__":
 
     # Create results directory
     os.makedirs(results_path, exist_ok=True)
+
+    # Create a link to the file in directory_to_watch called predictions.json
+    os.system(f'ln -sf {results_path} ./results')
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
