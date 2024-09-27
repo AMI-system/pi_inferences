@@ -67,7 +67,7 @@ python auto_models.py
 
 Then the script will run the insect detection and species classification on the image. The inference results will be saved to a csv in `results` directory, and an annotated version of the image, with labelled bounding boxes, will be added to `annotated_images`.
 
-### Run on Boot
+### Run Inference on Boot
 
 To run the inference automatically on boot, add the following line to the end of your user crontab (using the `crontab -e` command).
 
@@ -75,3 +75,34 @@ To run the inference automatically on boot, add the following line to the end of
 @reboot bash -c "cd /home/pi/Desktop/model_data_bookworm && source venv_3.9/bin/activate && python auto_models.py"
 ```
 
+### Start Camera and Telemetry on Boot
+
+Add the following to the root crontab (using the `sudo crontab -e` command):
+
+```bash
+@reboot /home/pi/scripts/setCamera.sh
+
+@reboot motion -m
+
+@reboot /home/pi/Desktop/ami_setup/cellular-env/bin/python /home/pi/Desktop/ami_setup/ami-trap-raspi-cellular.py
+```
+
+### Use Watchdog (UPS)
+
+Add the following line to the system crontab (using the `sudo nano /etc/crontab` command) to run the UPS script every minute:
+
+```bash
+* * * * * root /opt/wdt/ups-debug.sh 
+```
+
+If you have to install the script first:
+```bash
+git clone https://github.com/SequentMicrosystems/wdt-rpi.git
+cd wdt-rpi/
+sudo make install
+
+cd scripts/
+sudo mkdir -r /opt/wdt
+sudo ups-debug.sh /opt/wdt
+sudo chmod +x /opt/wdt/ups-debug.sh
+```
