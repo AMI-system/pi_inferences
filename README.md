@@ -100,9 +100,4 @@ If you have to install the script first:
 git clone https://github.com/SequentMicrosystems/wdt-rpi.git
 cd wdt-rpi/
 sudo make install
-
-cd scripts/
-sudo mkdir -r /opt/wdt
-sudo ups-debug.sh /opt/wdt
-sudo chmod +x /opt/wdt/ups-debug.sh
 ```
