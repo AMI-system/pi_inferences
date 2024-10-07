@@ -101,3 +101,11 @@ git clone https://github.com/SequentMicrosystems/wdt-rpi.git
 cd wdt-rpi/
 sudo make install
 ```
+
+### Mount SSD as `PiImages` directory
+
+Add the following line to `/etc/fstab`:
+
+```bash
+/dev/sda1 /media/pi/PiImages exfat defaults,nofail,umask=000 0 0
+```
