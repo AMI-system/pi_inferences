@@ -37,7 +37,7 @@ sudo wget -O /etc/motion/camera2.conf https://raw.githubusercontent.com/AMI-syst
 sudo wget -O /etc/motion/camera3.conf https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/camera3.conf
 sudo wget -O /etc/motion/camera4.conf https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/camera4.conf
 git clone -b cellular-amber-jonas https://github.com/AMI-system/ami_setup.git
-cd amber_setup
+cd ami_setup
 sudo chmod +x full_install.sh
 sudo ./full_install.sh
 cd ..
