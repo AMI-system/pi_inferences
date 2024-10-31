@@ -72,7 +72,7 @@ echo "# Installing cellular connectivity software   #"
 echo "###############################################"
 echo ""
 git clone -b cellular-amber-jonas https://github.com/AMI-system/ami_setup.git
-cd amber_setup
+cd ami_setup
 chmod +x full_install.sh
 ./full_install.sh
 cd ..
