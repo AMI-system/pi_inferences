@@ -73,8 +73,8 @@ echo "###############################################"
 echo ""
 git clone -b cellular-amber-jonas https://github.com/AMI-system/ami_setup.git
 cd ami_setup
-chmod +x full_install.sh
-./full_install.sh
+chmod +x full-install.sh
+./full-install.sh
 cd ..
 raspi-config nonint do_i2c 0
 echo ""
