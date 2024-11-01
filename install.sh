@@ -40,7 +40,7 @@ echo "# Configuring start-up behaviour              #"
 echo "###############################################"
 echo ""
 (crontab -l; echo '@reboot bash -c "cd /home/pi/pi_inferences && source venv_3.9/bin/activate && python auto_models.py"') | crontab -
-(crontab -l; echo '@reboot /home/pi/scripts/setCamera.sh'; echo '@reboot motion -m'; echo '@reboot /home/pi/ami_setup/cellular-env/bin/python /home/pi/Desktop/ami_setup/ami-trap-raspi-cellular.py') | crontab -
+(crontab -l; echo '@reboot /home/pi/scripts/setCamera.sh'; echo '@reboot motion -m'; echo '@reboot /home/pi/ami_setup/cellular-env/bin/python /home/pi/ami_setup/ami-trap-raspi-cellular.py') | crontab -
 echo '/dev/sda1 /media/pi/PiImages exfat defaults,nofail,umask=000 0 0' | tee -a /etc/fstab
 echo ""
 echo "###############################################"
