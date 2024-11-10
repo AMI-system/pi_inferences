@@ -10,6 +10,8 @@ from PIL import Image, ImageDraw, UnidentifiedImageError
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from tflite_support.task import core, processor, vision
+from concurrent.futures import ThreadPoolExecutor
+import threading
 
 def get_detections(detection_result):
     """get moth detections from the detection result and convert to list of dicts
@@ -162,61 +164,86 @@ def handle_file_creation(event):
             'confidence': [conf],
             'model': [region]
         })
-        # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
-        df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
 
-        # Check if the json file exists, if not create it and populate it with an 
-        if os.path.exists(f'{results_path}/predictions.json'):
+        # Lock for thread-safe file access
+        # Create a lock object to ensure that only one thread can access the output files at a time.
+        file_lock = threading.Lock()
 
-            # Load in the existing json
-            with open(f'{results_path}/predictions.json', 'r') as file:
-                data = json.load(file)
+        # The 'with' statement is used to acquire the lock before entering the block of code.
+        # This ensures that the code within the 'with' block is executed by only one thread at a time.
+        # When the block is exited, the lock is automatically released, even if an exception occurs.
+        with file_lock:
+            # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
+            df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
 
-        else:
+            # Check if the json file exists, if not create it and populate it with an 
+            if os.path.exists(f'{results_path}/predictions.json'):
 
-            # Create a new json file
-            data = {}
+                # Load in the existing json
+                with open(f'{results_path}/predictions.json', 'r') as file:
+                    data = json.load(file)
 
-        try:
+            else:
 
-            # Add the new record to the json (append)
-            json_df = pd.DataFrame.from_dict(data, orient='index')
-            json_df = pd.concat([json_df, df])
+                # Create a new json file
+                data = {}
 
-            records = json_df.to_dict(orient='records')
-            master_dict = {}
-            for index, record in enumerate(records):
-                master_dict[f'record_{index}'] = record
+            try:
 
-        except Exception as e:
+                # Add the new record to the json (append)
+                json_df = pd.DataFrame.from_dict(data, orient='index')
+                json_df = pd.concat([json_df, df])
 
-            print(f"Error: {e}")
-            master_dict = {}
+                records = json_df.to_dict(orient='records')
+                master_dict = {}
+                for index, record in enumerate(records):
+                    master_dict[f'record_{index}'] = record
 
-        # Write the master dictionary to a JSON file
-        output_file_path = f'{results_path}/predictions.json'
-        with open(output_file_path, 'w') as outfile:
-            json.dump(master_dict, outfile, indent=4)
+            except Exception as e:
+
+                print(f"Error: {e}")
+                master_dict = {}
+
+            # Write the master dictionary to a JSON file
+            output_file_path = f'{results_path}/predictions.json'
+            with open(output_file_path, 'w') as outfile:
+                json.dump(master_dict, outfile, indent=4)
 
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
 def monitor_directory(path):
-    """monitor a directory for file creation events
+    """Monitor a directory for file creation events
 
     Args:
         path (str): the path to the directory to monitor
     """
+    # Create an event handler that will handle file creation events
     event_handler = FileSystemEventHandler()
-    event_handler.on_created = handle_file_creation
+    
+    # Assign a lambda function to handle file creation events by submitting the handle_file_creation function to the executor
+    event_handler.on_created = lambda event: executor.submit(handle_file_creation, event)
+    
+    # Create an observer to monitor the directory
     observer = Observer()
+    
+    # Schedule the observer to watch the specified path for file creation events
     observer.schedule(event_handler, path, recursive=False)
+    
+    # Start the observer
     observer.start()
-    try:
-        while True:
-            time.sleep(1)
-    except KeyboardInterrupt:
-        observer.stop()
-    observer.join()
+
+    # Create a ThreadPoolExecutor to handle up to 4 concurrent file creation events
+    with ThreadPoolExecutor(max_workers=4) as executor:
+        try:
+            # Keep the script running to continuously monitor the directory
+            while True:
+                time.sleep(1)
+        except KeyboardInterrupt:
+            # Stop the observer if the script is interrupted
+            observer.stop()
+        
+        # Wait for the observer to finish
+        observer.join()
 
 if __name__ == "__main__":
     # Configuration
