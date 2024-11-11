@@ -125,8 +125,8 @@ def handle_file_creation(event):
 
         print(f"{len(detections_list)} detections on {event.src_path}")
         idx = 0
+        master_dict = {}  # Create a dictionary to store the results for the JSON file
         for detection in detections_list:
-            idx += 1
             print(f"{event.src_path}: {idx}/{len(detections_list)}")
             bounding_box = detection['bounding_box']
             origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
@@ -172,7 +172,7 @@ def handle_file_creation(event):
                         fontScale=1.2, color=bbox_color, thickness=4)
 
             # Save inference results to csv
-            df = pd.DataFrame({
+            record = {
                 'image_path': [image_path],
                 'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
                 'moth_class': [category_name],
@@ -185,7 +185,8 @@ def handle_file_creation(event):
                 'pred': [species_names[species_inf]],
                 'confidence': [conf],
                 'model': [region]
-            })
+            }
+            df = pd.DataFrame(record)
 
             # print(f"+1 interference on {event.src_path}")
 
@@ -200,42 +201,18 @@ def handle_file_creation(event):
                 # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
                 df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
 
-                # Check if the json file exists, if not create it and populate it with an 
-                if os.path.exists(f'{results_path}/predictions.json'):
+            master_dict[f'record_{idx}'] = record
 
-                    # Load in the existing json
-                    with open(f'{results_path}/predictions.json', 'r') as file:
-                        data = json.load(file)
+            # print(f"+1 inference from {event.src_path} added to output")
 
-                else:
-
-                    # Create a new json file
-                    data = {}
-
-                try:
-
-                    # Add the new record to the json (append)
-                    json_df = pd.DataFrame.from_dict(data, orient='index')
-                    json_df = pd.concat([json_df, df])
-
-                    records = json_df.to_dict(orient='records')
-                    master_dict = {}
-                    for index, record in enumerate(records):
-                        master_dict[f'record_{index}'] = record
-
-                except Exception as e:
-
-                    print(f"Error: {e}")
-                    master_dict = {}
-
-                # Write the master dictionary to a JSON file
-                output_file_path = f'{results_path}/predictions.json'
-                with open(output_file_path, 'w') as outfile:
-                    json.dump(master_dict, outfile, indent=4)
-
-                # print(f"+1 inference from {event.src_path} added to output")
+            idx += 1
 
         cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+
+        # Write the master dictionary to a JSON file
+        output_file_path = f'{results_path}/{os.path.basename(image_path).replace(".jpg", ".json")}'
+        with open(output_file_path, 'w') as outfile:
+            json.dump(master_dict, outfile, indent=4)
 
         print(f"Done processing {event.src_path} in {datetime.datetime.now() - start_time}")
 
@@ -267,7 +244,7 @@ def monitor_directory(path):
     observer.start()
 
     # Create a ThreadPoolExecutor to handle up to 3 concurrent file creation events
-    with ThreadPoolExecutor(max_workers=2) as executor:
+    with ThreadPoolExecutor(max_workers=3) as executor:
         try:
             # Keep the script running to continuously monitor the directory
             while True:
@@ -292,11 +269,11 @@ if __name__ == "__main__":
     os.makedirs(results_path, exist_ok=True)
 
     # Create a link to the file in directory_to_watch called predictions.json
-    try:
-        os.system(f'rm /home/pi/Desktop/model_data_bookworm/results')
-    except:
-        pass
-    os.system(f'ln -sf {results_path} /home/pi/Desktop/model_data_bookworm/results')
+    # try:
+    #     os.system(f'rm /home/pi/Desktop/model_data_bookworm/results')
+    # except:
+    #     pass
+    # os.system(f'ln -sf {results_path} /home/pi/Desktop/model_data_bookworm/results')
 
     # Moth Detection Setup
     base_options = core.BaseOptions(file_name=model_path,
