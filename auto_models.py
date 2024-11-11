@@ -85,158 +85,165 @@ def handle_file_creation(event):
     Args:
         event (watchdog.events.FileCreatedEvent): File creation event
     """
+    try:
 
-    start_time = datetime.datetime.now()
+        start_time = datetime.datetime.now()
 
-    # When image is added, load
-    if event.is_directory:
-        return
-    print(f"Performing inferences on: {event.src_path} using thread {threading.get_ident()}")
-    image_path = event.src_path
-    max_loops = 20  # Wait for max 2 seconds for image to be written to disk
-    loop_counter = 0
-    while True:
-        try:
-            print(f"Waiting for image {event.src_path} to be written to disk...")
-            time.sleep(0.1)  # Give the image time to be written to disk
-            image = np.asarray(Image.open(image_path))
-            break
-        except UnidentifiedImageError:
-            if loop_counter > max_loops:
-                print(f"Timeout reached. Unable to open image {event.src_path}.")
-                return
-    image = np.asarray(Image.open(image_path))
-    print(f"Opened image {event.src_path}...")
-    annot_image = image.copy()
-    # If target path does not exist, create it
-    if not os.path.exists('/media/pi/PiImages/annotated_images'):
-        os.makedirs('/media/pi/PiImages/annotated_images')
-    annotated_image_path = os.path.join('/media/pi/PiImages/annotated_images',
-                                        os.path.basename(image_path))
-
-    # Perform moth detection
-    input_tensor = vision.TensorImage.create_from_array(image)
-    a = datetime.datetime.now()
-    detection_result = detector.detect(input_tensor)
-    detections_list = get_detections(detection_result)
-    b = datetime.datetime.now()
-    c = b - a
-
-    print(f"{len(detections_list)} detections on {event.src_path}")
-    idx = 0
-    for detection in detections_list:
-        idx += 1
-        print(f"{event.src_path}: {idx}/{len(detections_list)}")
-        bounding_box = detection['bounding_box']
-        origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
-
-        # Crop the image to the bounding box
-        cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
-        category_name = detection['categories'][0]['category_name']
-        insect_score = detection['categories'][0]['score']
-        resized_image = Image.fromarray(cropped_image).convert("RGB").resize((300, 300))
-        img = np.array(resized_image) / 255.0
-        img = (img - 0.5) / 0.5
-
-        # Ensure each worker uses a different interpreter
-        thread_id = threading.get_ident()
-        if thread_id not in interpreters:
-            # print(f"Creating interpreter for thread {thread_id} and image {event.src_path}")
-            interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
-            interpreter.allocate_tensors()
-            interpreters[thread_id] = interpreter
-        else:
-            # print(f"Using existing interpreter for thread {thread_id} and image {event.src_path}")
-            interpreter = interpreters[thread_id]
-
-        # Perform species classification
-        species_inf, conf, inf_time = species_inference(img, interpreter)
-
-        # print(f"Species inference on {event.src_path}: {species_names[species_inf]}, {conf:.2f}")
-
-        # If insect at image boundary move the label
-        im_width, im_height = resized_image.size
-        ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
-
-        # Add bounding box annotation to the image
-        bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
-        ann_label = f"{species_names[species_inf]}, {conf:.2f}"
-        cv2.rectangle(annot_image,
-                      (origin_x, origin_y),
-                      (origin_x + width, origin_y + height),
-                      bbox_color, 4)
-        cv2.putText(annot_image, text=ann_label,
-                    org=(origin_x, ymax),
-                    fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=1.2, color=bbox_color, thickness=4)
-
-        # Save inference results to csv
-        df = pd.DataFrame({
-            'image_path': [image_path],
-            'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
-            'moth_class': [category_name],
-            'insect_score': [insect_score],
-            'detection_time': [str(c.microseconds)],
-            'bounding_box': ['; '.join(map(str, bounding_box.values()))],
-            # 'annot_path': [],  # [annotated_image_path],
-            'species_inference_time': [inf_time],
-            # 'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
-            'pred': [species_names[species_inf]],
-            'confidence': [conf],
-            'model': [region]
-        })
-
-        # print(f"+1 interference on {event.src_path}")
-
-        # Lock for thread-safe file access
-        # Create a lock object to ensure that only one thread can access the output files at a time.
-        file_lock = threading.Lock()
-
-        # The 'with' statement is used to acquire the lock before entering the block of code.
-        # This ensures that the code within the 'with' block is executed by only one thread at a time.
-        # When the block is exited, the lock is automatically released, even if an exception occurs.
-        with file_lock:
-            # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
-            df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
-
-            # Check if the json file exists, if not create it and populate it with an 
-            if os.path.exists(f'{results_path}/predictions.json'):
-
-                # Load in the existing json
-                with open(f'{results_path}/predictions.json', 'r') as file:
-                    data = json.load(file)
-
-            else:
-
-                # Create a new json file
-                data = {}
-
+        # When image is added, load
+        if event.is_directory:
+            return
+        print(f"Performing inferences on: {event.src_path} using thread {threading.get_ident()}")
+        image_path = event.src_path
+        max_loops = 20  # Wait for max 2 seconds for image to be written to disk
+        loop_counter = 0
+        while True:
             try:
+                print(f"Waiting for image {event.src_path} to be written to disk...")
+                time.sleep(0.1)  # Give the image time to be written to disk
+                image = np.asarray(Image.open(image_path))
+                break
+            except UnidentifiedImageError:
+                if loop_counter > max_loops:
+                    print(f"Timeout reached. Unable to open image {event.src_path}.")
+                    return
+        image = np.asarray(Image.open(image_path))
+        print(f"Opened image {event.src_path}...")
+        annot_image = image.copy()
+        # If target path does not exist, create it
+        if not os.path.exists('/media/pi/PiImages/annotated_images'):
+            os.makedirs('/media/pi/PiImages/annotated_images')
+        annotated_image_path = os.path.join('/media/pi/PiImages/annotated_images',
+                                            os.path.basename(image_path))
 
-                # Add the new record to the json (append)
-                json_df = pd.DataFrame.from_dict(data, orient='index')
-                json_df = pd.concat([json_df, df])
+        # Perform moth detection
+        input_tensor = vision.TensorImage.create_from_array(image)
+        a = datetime.datetime.now()
+        detection_result = detector.detect(input_tensor)
+        detections_list = get_detections(detection_result)
+        b = datetime.datetime.now()
+        c = b - a
 
-                records = json_df.to_dict(orient='records')
-                master_dict = {}
-                for index, record in enumerate(records):
-                    master_dict[f'record_{index}'] = record
+        print(f"{len(detections_list)} detections on {event.src_path}")
+        idx = 0
+        for detection in detections_list:
+            idx += 1
+            print(f"{event.src_path}: {idx}/{len(detections_list)}")
+            bounding_box = detection['bounding_box']
+            origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
 
-            except Exception as e:
+            # Crop the image to the bounding box
+            cropped_image = image[origin_y:origin_y + height, origin_x:origin_x + width]
+            category_name = detection['categories'][0]['category_name']
+            insect_score = detection['categories'][0]['score']
+            resized_image = Image.fromarray(cropped_image).convert("RGB").resize((300, 300))
+            img = np.array(resized_image) / 255.0
+            img = (img - 0.5) / 0.5
 
-                print(f"Error: {e}")
-                master_dict = {}
+            # Ensure each worker uses a different interpreter
+            thread_id = threading.get_ident()
+            if thread_id not in interpreters:
+                # print(f"Creating interpreter for thread {thread_id} and image {event.src_path}")
+                interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
+                interpreter.allocate_tensors()
+                interpreters[thread_id] = interpreter
+            else:
+                # print(f"Using existing interpreter for thread {thread_id} and image {event.src_path}")
+                interpreter = interpreters[thread_id]
 
-            # Write the master dictionary to a JSON file
-            output_file_path = f'{results_path}/predictions.json'
-            with open(output_file_path, 'w') as outfile:
-                json.dump(master_dict, outfile, indent=4)
+            # Perform species classification
+            species_inf, conf, inf_time = species_inference(img, interpreter)
 
-            # print(f"+1 inference from {event.src_path} added to output")
+            # print(f"Species inference on {event.src_path}: {species_names[species_inf]}, {conf:.2f}")
 
-    cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+            # If insect at image boundary move the label
+            im_width, im_height = resized_image.size
+            ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
 
-    print(f"Done processing {event.src_path} in {datetime.datetime.now() - start_time}")
+            # Add bounding box annotation to the image
+            bbox_color = (46, 139, 87) if category_name == 'moth' else (238, 75, 43)
+            ann_label = f"{species_names[species_inf]}, {conf:.2f}"
+            cv2.rectangle(annot_image,
+                        (origin_x, origin_y),
+                        (origin_x + width, origin_y + height),
+                        bbox_color, 4)
+            cv2.putText(annot_image, text=ann_label,
+                        org=(origin_x, ymax),
+                        fontFace=cv2.FONT_HERSHEY_SIMPLEX,
+                        fontScale=1.2, color=bbox_color, thickness=4)
+
+            # Save inference results to csv
+            df = pd.DataFrame({
+                'image_path': [image_path],
+                'timestamp': [datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")],
+                'moth_class': [category_name],
+                'insect_score': [insect_score],
+                'detection_time': [str(c.microseconds)],
+                'bounding_box': ['; '.join(map(str, bounding_box.values()))],
+                # 'annot_path': [],  # [annotated_image_path],
+                'species_inference_time': [inf_time],
+                # 'truth': [' '.join(image_path.split('/')[-1].split('_')[0:2])],
+                'pred': [species_names[species_inf]],
+                'confidence': [conf],
+                'model': [region]
+            })
+
+            # print(f"+1 interference on {event.src_path}")
+
+            # Lock for thread-safe file access
+            # Create a lock object to ensure that only one thread can access the output files at a time.
+            file_lock = threading.Lock()
+
+            # The 'with' statement is used to acquire the lock before entering the block of code.
+            # This ensures that the code within the 'with' block is executed by only one thread at a time.
+            # When the block is exited, the lock is automatically released, even if an exception occurs.
+            with file_lock:
+                # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
+                df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
+
+                # Check if the json file exists, if not create it and populate it with an 
+                if os.path.exists(f'{results_path}/predictions.json'):
+
+                    # Load in the existing json
+                    with open(f'{results_path}/predictions.json', 'r') as file:
+                        data = json.load(file)
+
+                else:
+
+                    # Create a new json file
+                    data = {}
+
+                try:
+
+                    # Add the new record to the json (append)
+                    json_df = pd.DataFrame.from_dict(data, orient='index')
+                    json_df = pd.concat([json_df, df])
+
+                    records = json_df.to_dict(orient='records')
+                    master_dict = {}
+                    for index, record in enumerate(records):
+                        master_dict[f'record_{index}'] = record
+
+                except Exception as e:
+
+                    print(f"Error: {e}")
+                    master_dict = {}
+
+                # Write the master dictionary to a JSON file
+                output_file_path = f'{results_path}/predictions.json'
+                with open(output_file_path, 'w') as outfile:
+                    json.dump(master_dict, outfile, indent=4)
+
+                # print(f"+1 inference from {event.src_path} added to output")
+
+        cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+
+        print(f"Done processing {event.src_path} in {datetime.datetime.now() - start_time}")
+
+    except Exception as e:
+
+        print()
+        print(f"Error in handle_file_creation: {e}")
+        print()
 
 def monitor_directory(path):
     """Monitor a directory for file creation events
