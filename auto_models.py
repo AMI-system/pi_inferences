@@ -104,7 +104,7 @@ def handle_file_creation(event):
                 print(f"Timeout reached. Unable to open image {event.src_path}.")
                 return
     image = np.asarray(Image.open(image_path))
-    print("Opened image {event.src_path}...")
+    print(f"Opened image {event.src_path}...")
     annot_image = image.copy()
     # If target path does not exist, create it
     if not os.path.exists('/media/pi/PiImages/annotated_images'):
@@ -135,6 +135,16 @@ def handle_file_creation(event):
 
         # Perform species classification
         species_inf, conf, inf_time = species_inference(img, interpreter)
+        # Ensure each worker uses a different interpreter
+        thread_id = threading.get_ident()
+        if thread_id not in interpreters:
+            print(f"Creating interpreter for thread {thread_id}")
+            interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
+            interpreter.allocate_tensors()
+            interpreters[thread_id] = interpreter
+        else:
+            print(f"Using existing interpreter for thread {thread_id}")
+            interpreter = interpreters[thread_id]
 
         # If insect at image boundary move the label
         im_width, im_height = resized_image.size
@@ -284,8 +294,9 @@ if __name__ == "__main__":
     detector = vision.ObjectDetector.create_from_options(options)
 
     # Species Classification Setup
-    interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
-    interpreter.allocate_tensors()
+    # interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
+    # interpreter.allocate_tensors()
+    interpreters = {}
     species_names = json.load(open(f'./models/01_{region}_data_numeric_labels.json', 'r'))['species_list']
 
     monitor_directory(directory_to_watch)
