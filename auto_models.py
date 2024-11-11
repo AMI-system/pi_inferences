@@ -201,6 +201,13 @@ def handle_file_creation(event):
                 # df['correct'] = np.where(df['pred'] == df['truth'], 1, 0)
                 df.to_csv(f'{results_path}/predictions.csv', index=False, mode='a', header=False)
 
+            # Remove the lists from the record dictionary to avoid duplication in the JSON file. I.e., turn 'model': [region] into 'model': region
+            for key in record:
+                try:
+                    record[key] = record[key][0]
+                except:
+                    pass
+
             master_dict[f'record_{idx}'] = record
 
             # print(f"+1 inference from {event.src_path} added to output")
