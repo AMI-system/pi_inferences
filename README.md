@@ -109,3 +109,11 @@ Add the following line to `/etc/fstab`:
 ```bash
 /dev/sda1 /media/pi/PiImages exfat defaults,nofail,umask=000 0 0
 ```
+### Obtain models
+
+Create a directory `models` in the `pi_inferences` directory.
+Manually copy the required models and species lists from Sharepoint:
+* `gbif_model_metadata.tflite` as model for detection.
+* `resnet_{region}.tflite` as model for classification.
+* `01_{region}_data_numeric_labels.json` as species list for classification.
+Also set the `region` parameter in `auto_models.py` accordingly.
