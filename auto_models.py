@@ -136,12 +136,12 @@ def handle_file_creation(event):
         # Ensure each worker uses a different interpreter
         thread_id = threading.get_ident()
         if thread_id not in interpreters:
-            print(f"Creating interpreter for thread {thread_id}")
+            print(f"Creating interpreter for thread {thread_id} and image {event.src_path}")
             interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
             interpreter.allocate_tensors()
             interpreters[thread_id] = interpreter
         else:
-            print(f"Using existing interpreter for thread {thread_id}")
+            print(f"Using existing interpreter for thread {thread_id} and image {event.src_path}")
             interpreter = interpreters[thread_id]
 
         # Perform species classification
