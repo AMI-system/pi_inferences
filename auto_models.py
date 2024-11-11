@@ -89,7 +89,7 @@ def handle_file_creation(event):
     # When image is added, load
     if event.is_directory:
         return
-    print(f"Performing inferences on: {event.src_path}")
+    print(f"Performing inferences on: {event.src_path} using thread {threading.get_ident()}")
     image_path = event.src_path
     max_loops = 20  # Wait for max 2 seconds for image to be written to disk
     loop_counter = 0
