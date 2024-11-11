@@ -260,7 +260,7 @@ def monitor_directory(path):
     observer.start()
 
     # Create a ThreadPoolExecutor to handle up to 3 concurrent file creation events
-    with ThreadPoolExecutor(max_workers=3) as executor:
+    with ThreadPoolExecutor(max_workers=2) as executor:
         try:
             # Keep the script running to continuously monitor the directory
             while True:
