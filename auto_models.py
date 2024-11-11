@@ -133,8 +133,6 @@ def handle_file_creation(event):
         img = np.array(resized_image) / 255.0
         img = (img - 0.5) / 0.5
 
-        # Perform species classification
-        species_inf, conf, inf_time = species_inference(img, interpreter)
         # Ensure each worker uses a different interpreter
         thread_id = threading.get_ident()
         if thread_id not in interpreters:
@@ -145,6 +143,9 @@ def handle_file_creation(event):
         else:
             print(f"Using existing interpreter for thread {thread_id}")
             interpreter = interpreters[thread_id]
+
+        # Perform species classification
+        species_inf, conf, inf_time = species_inference(img, interpreter)
 
         # If insect at image boundary move the label
         im_width, im_height = resized_image.size
