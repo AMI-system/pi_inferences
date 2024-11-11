@@ -123,7 +123,10 @@ def handle_file_creation(event):
     c = b - a
 
     print(f"{len(detections_list)} detections on {event.src_path}")
+    idx = 0
     for detection in detections_list:
+        idx += 1
+        print(f"{event.src_path}: {idx}/{len(detections_list)}")
         bounding_box = detection['bounding_box']
         origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
 
