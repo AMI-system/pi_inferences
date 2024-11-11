@@ -109,6 +109,7 @@ Add the following line to `/etc/fstab`:
 ```bash
 /dev/sda1 /media/pi/PiImages exfat defaults,nofail,umask=000 0 0
 ```
+
 ### Obtain models
 
 Create a directory `models` in the `pi_inferences` directory.
