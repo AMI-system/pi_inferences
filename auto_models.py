@@ -95,16 +95,16 @@ def handle_file_creation(event):
     loop_counter = 0
     while True:
         try:
-            print("Waiting for image to be written to disk...")
+            print(f"Waiting for image {event.src_path} to be written to disk...")
             time.sleep(0.1)  # Give the image time to be written to disk
             image = np.asarray(Image.open(image_path))
             break
         except UnidentifiedImageError:
             if loop_counter > max_loops:
-                print("Timeout reached. Unable to open image.")
+                print(f"Timeout reached. Unable to open image {event.src_path}.")
                 return
     image = np.asarray(Image.open(image_path))
-    print("Opened image...")
+    print("Opened image {event.src_path}...")
     annot_image = image.copy()
     # If target path does not exist, create it
     if not os.path.exists('/media/pi/PiImages/annotated_images'):
@@ -112,7 +112,7 @@ def handle_file_creation(event):
     annotated_image_path = os.path.join('/media/pi/PiImages/annotated_images',
                                         os.path.basename(image_path))
 
-    # Perform moth detecion
+    # Perform moth detection
     input_tensor = vision.TensorImage.create_from_array(image)
     a = datetime.datetime.now()
     detection_result = detector.detect(input_tensor)
@@ -120,7 +120,7 @@ def handle_file_creation(event):
     b = datetime.datetime.now()
     c = b - a
 
-    print(f"{len(detections_list)} detections")
+    print(f"{len(detections_list)} detections on {event.src_path}")
     for detection in detections_list:
         bounding_box = detection['bounding_box']
         origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
@@ -168,6 +168,8 @@ def handle_file_creation(event):
             'model': [region]
         })
 
+        print(f"+1 interference on {event.src_path}")
+
         # Lock for thread-safe file access
         # Create a lock object to ensure that only one thread can access the output files at a time.
         file_lock = threading.Lock()
@@ -212,7 +214,11 @@ def handle_file_creation(event):
             with open(output_file_path, 'w') as outfile:
                 json.dump(master_dict, outfile, indent=4)
 
+            print(f"+1 inference from {event.src_path} added to output")
+
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+
+    print(f"Done processing {event.src_path}")
 
 def monitor_directory(path):
     """Monitor a directory for file creation events
