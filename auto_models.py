@@ -86,6 +86,8 @@ def handle_file_creation(event):
         event (watchdog.events.FileCreatedEvent): File creation event
     """
 
+    start_time = datetime.datetime.now()
+
     # When image is added, load
     if event.is_directory:
         return
@@ -136,18 +138,18 @@ def handle_file_creation(event):
         # Ensure each worker uses a different interpreter
         thread_id = threading.get_ident()
         if thread_id not in interpreters:
-            print(f"Creating interpreter for thread {thread_id} and image {event.src_path}")
+            # print(f"Creating interpreter for thread {thread_id} and image {event.src_path}")
             interpreter = tf.lite.Interpreter(model_path=f"./models/resnet_{region}.tflite")
             interpreter.allocate_tensors()
             interpreters[thread_id] = interpreter
         else:
-            print(f"Using existing interpreter for thread {thread_id} and image {event.src_path}")
+            # print(f"Using existing interpreter for thread {thread_id} and image {event.src_path}")
             interpreter = interpreters[thread_id]
 
         # Perform species classification
         species_inf, conf, inf_time = species_inference(img, interpreter)
 
-        print(f"Species inference on {event.src_path}: {species_names[species_inf]}, {conf:.2f}")
+        # print(f"Species inference on {event.src_path}: {species_names[species_inf]}, {conf:.2f}")
 
         # If insect at image boundary move the label
         im_width, im_height = resized_image.size
@@ -181,7 +183,7 @@ def handle_file_creation(event):
             'model': [region]
         })
 
-        print(f"+1 interference on {event.src_path}")
+        # print(f"+1 interference on {event.src_path}")
 
         # Lock for thread-safe file access
         # Create a lock object to ensure that only one thread can access the output files at a time.
@@ -227,11 +229,11 @@ def handle_file_creation(event):
             with open(output_file_path, 'w') as outfile:
                 json.dump(master_dict, outfile, indent=4)
 
-            print(f"+1 inference from {event.src_path} added to output")
+            # print(f"+1 inference from {event.src_path} added to output")
 
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
 
-    print(f"Done processing {event.src_path}")
+    print(f"Done processing {event.src_path} in {datetime.datetime.now() - start_time}")
 
 def monitor_directory(path):
     """Monitor a directory for file creation events
