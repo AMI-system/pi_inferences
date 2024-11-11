@@ -106,8 +106,11 @@ def handle_file_creation(event):
     image = np.asarray(Image.open(image_path))
     print("Opened image...")
     annot_image = image.copy()
-    annotated_image_path = os.path.join('/home/pi/Desktop/model_data_bookworm/annotated_images/',
-                                        "most_recent_annotated_image.jpg")
+    # If target path does not exist, create it
+    if not os.path.exists('/media/pi/PiImages/annotated_images'):
+        os.makedirs('/media/pi/PiImages/annotated_images')
+    annotated_image_path = os.path.join('/media/pi/PiImages/annotated_images',
+                                        os.path.basename(image_path))
 
     # Perform moth detecion
     input_tensor = vision.TensorImage.create_from_array(image)
