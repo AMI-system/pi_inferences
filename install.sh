@@ -62,6 +62,8 @@ apt install -y motion
 mkdir -p /home/pi/scripts
 wget -O /home/pi/scripts/setCamera.sh https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/setCamera.sh
 wget -O /etc/motion/motion.conf https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/motion.conf
+sed -i 's|snapshot_filename images/%Y_%m_%d-snapshot/%Y%m%d%H%M%S-snapshot|snapshot_filename %v-%Y%m%d%H%M%S-snapshot|' /etc/motion/motion.conf
+sed -i 's|picture_filename images/%Y_%m_%d/%Y%m%d%H%M%S-%q-%v|picture_filename %Y_%m_%d/%Y%m%d%H%M%S-%q-%v|' /etc/motion/motion.conf
 wget -O /etc/motion/camera1.conf https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/camera1.conf
 wget -O /etc/motion/camera2.conf https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/camera2.conf
 wget -O /etc/motion/camera3.conf https://raw.githubusercontent.com/AMI-system/ami_setup/refs/heads/agzero_wittypi/motion_scripts/camera3.conf
