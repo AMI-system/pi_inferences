@@ -147,6 +147,8 @@ def handle_file_creation(event):
         # Perform species classification
         species_inf, conf, inf_time = species_inference(img, interpreter)
 
+        print(f"Species inference on {event.src_path}: {species_names[species_inf]}, {conf:.2f}")
+
         # If insect at image boundary move the label
         im_width, im_height = resized_image.size
         ymax = origin_y - 10 if origin_y - 10 >= 5 else origin_y + height + 30
