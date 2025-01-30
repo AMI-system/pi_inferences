@@ -75,3 +75,21 @@ To run the inference automatically on boot, add the following line to the end of
 @reboot bash -c "cd /home/pi/Desktop/model_data_bookworm && source venv_3.9/bin/activate && python auto_models.py"
 ```
 
+# Take an image
+
+```sh
+fswebcam --device /dev/video0 ~/Documents/model_data_bookworm/watch_folder/any_moths3.jpg
+```
+
+# View the webcam feed
+
+To view the webcam feed, open VLC and go to `Media > Open Capture Device` and select the video device (/dev/video0).
+
+To view the pi desktop from a laptop, install and run tightvncserver on the pi:
+
+```sh
+sudo apt-get install tightvncserver
+tightvncserver
+```
+
+The on your laptop, install and run a VNC viewer, and connect to the pi's IP address (`vnc://raspberrypi.local:5901`). For a mac, use the built-in Screen Sharing app (can be found using cmd+space 'screen sharing').

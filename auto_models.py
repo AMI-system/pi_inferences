@@ -117,6 +117,9 @@ def handle_file_creation(event):
 
     print(f"{len(detections_list)} detections")
     for detection in detections_list:
+        score = detection['categories'][0]['score']
+        if score < 0.2:
+            continue
         bounding_box = detection['bounding_box']
         origin_x, origin_y, width, height = bounding_box['origin_x'], bounding_box['origin_y'], bounding_box['width'], bounding_box['height']
 
@@ -141,11 +144,11 @@ def handle_file_creation(event):
         cv2.rectangle(annot_image,
                       (origin_x, origin_y),
                       (origin_x + width, origin_y + height),
-                      bbox_color, 4)
+                      bbox_color, 2)
         cv2.putText(annot_image, text=ann_label,
                     org=(origin_x, ymax),
                     fontFace=cv2.FONT_HERSHEY_SIMPLEX,
-                    fontScale=1.2, color=bbox_color, thickness=4)
+                    fontScale=0.3, color=bbox_color, thickness=1)
 
         # Save inference results to csv
         df = pd.DataFrame({
@@ -185,6 +188,7 @@ def handle_file_creation(event):
             json.dump(master_dict, outfile, indent=4)
 
     cv2.imwrite(annotated_image_path, cv2.cvtColor(annot_image, cv2.COLOR_BGR2RGB))
+    print("Finished for this image")
 
 def monitor_directory(path):
     """monitor a directory for file creation events
@@ -209,7 +213,7 @@ if __name__ == "__main__":
     model_path = './models/gbif_model_metadata.tflite'
     enable_edgetpu = False
     num_threads = 1
-    region = 'uk'
+    region = 'costarica'
     directory_to_watch = "/home/pi/Documents/model_data_bookworm/watch_folder"
 
     # Moth Detection Setup
